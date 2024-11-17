@@ -18,11 +18,11 @@ def was_consecutively_correct(card: anki.cards.Card, times: int):
     answers = card.col.db.list(cmd)
     total_consecutively_correct = len(get_last_correct_answers(answers))
 
-    return total_consecutively_correct >= times
+    return total_consecutively_correct >= times and total_consecutively_correct % times == 0
 
 def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
     updated_card = card.col.get_card(card.id)
-    if was_consecutively_correct(card, 2) and updated_card.lapses > 0:
+    if was_consecutively_correct(card, 3) and updated_card.lapses > 0:
         updated_card.lapses -= 1
         context.mw.col.update_card(updated_card)
         context.mw.col.update_note(updated_card.note())
