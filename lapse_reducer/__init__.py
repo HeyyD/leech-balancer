@@ -13,20 +13,23 @@ def get_last_correct_answers(answers):
             break
     return result
 
-def was_consecutively_correct(card: anki.cards.Card, times: int):
+def get_answers(card: anki.cards.Card):
     cmd = f'SELECT ease FROM revlog WHERE cid IS {card.id} ORDER BY id DESC'
-    answers = card.col.db.list(cmd)
-    total_consecutively_correct = len(get_last_correct_answers(answers))
+    return card.col.db.list(cmd)
 
+def was_consecutively_correct(correct_answers, times: int):
+    total_consecutively_correct = len(correct_answers)
     return total_consecutively_correct >= times and total_consecutively_correct % times == 0
 
 def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
+    answers = get_answers(card)
+    correct_answers = get_last_correct_answers(answers)
     updated_card = card.col.get_card(card.id)
-    if was_consecutively_correct(card, 3) and updated_card.lapses > 0:
+    if was_consecutively_correct(correct_answers, 3) and updated_card.lapses > 0:
         updated_card.lapses -= 1
         context.mw.col.update_card(updated_card)
         context.mw.col.update_note(updated_card.note())
-        utils.tooltip('Reduced lapse of the card', period=3000)
+        utils.tooltip(f'Answered correct {len(correct_answers)} times in a row. Reduced lapse of the card.', period=3000)
 
 def init():
     print('Setting up lapse reducer....')
