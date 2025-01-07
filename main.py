@@ -1,8 +1,13 @@
 import anki.cards
 import aqt.reviewer
 
-from aqt import utils
+from aqt import mw, utils
 from aqt.gui_hooks import reviewer_did_answer_card
+
+from .config import CONFIG_REQUIRED_CORRECT_ANSWERS, CONFIG_SHOW_TOAST
+
+def get_config_value(key, default):
+    return mw.addonManager.getConfig(__name__).get(key, default)
 
 def get_last_correct_answers(answers):
     result = []
@@ -22,14 +27,21 @@ def was_consecutively_correct(correct_answers, times: int):
     return total_consecutively_correct >= times and total_consecutively_correct % times == 0
 
 def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
+    required_correct_answers = get_config_value(CONFIG_REQUIRED_CORRECT_ANSWERS, 3)
+    show_toast = get_config_value(CONFIG_SHOW_TOAST, True)
+
     answers = get_answers(card)
     correct_answers = get_last_correct_answers(answers)
     updated_card = card.col.get_card(card.id)
-    if was_consecutively_correct(correct_answers, 3) and updated_card.lapses > 0:
+    if was_consecutively_correct(correct_answers, required_correct_answers) and updated_card.lapses > 0:
+        undo = context.mw.col.undo_status().last_step
         updated_card.lapses -= 1
         context.mw.col.update_card(updated_card)
         context.mw.col.update_note(updated_card.note())
-        utils.tooltip(f'Answered correct {len(correct_answers)} times in a row. Reduced lapse of the card.', period=3000)
+        context.mw.col.merge_undo_entries(undo)
+        print('Reduced lapse of the card.')
+        if show_toast:
+            utils.tooltip(f'Answered correct {len(correct_answers)} times in a row. Reduced lapse of the card.', period=3000)
 
 
 def init():
