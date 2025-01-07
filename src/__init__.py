@@ -6,6 +6,12 @@ from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QGridLayout, QDialogBu
 from aqt import utils, mw, qconnect
 from aqt.gui_hooks import reviewer_did_answer_card
 
+CONFIG_REQUIRED_CORRECT_ANSWERS = 'required_correct_answers'
+CONFIG_SHOW_TOAST = 'show_toast'
+
+def get_config():
+    return mw.addonManager.getConfig(__name__)
+
 def get_last_correct_answers(answers):
     result = []
     for element in answers:
@@ -34,6 +40,8 @@ def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
         utils.tooltip(f'Answered correct {len(correct_answers)} times in a row. Reduced lapse of the card.', period=3000)
 
 def open_setting_dialogue():
+    config = get_config()
+
     dialog = QDialog(mw)
     dialog.setWindowTitle("Leech Balancer")
 
@@ -41,16 +49,27 @@ def open_setting_dialogue():
 
     show_toast_label = QLabel("Show toast")
     show_toast = QCheckBox()
+    show_toast.setChecked(config.get(CONFIG_SHOW_TOAST, True))
     grid.addWidget(show_toast_label, 0, 0)
     grid.addWidget(show_toast, 0, 1)
 
     required_correct_answers_label = QLabel("Required correct answers")
     required_correct_answers = QSpinBox()
     required_correct_answers.setMinimumWidth(200)
+    required_correct_answers.setValue(config.get(CONFIG_REQUIRED_CORRECT_ANSWERS, 3))
+
     grid.addWidget(required_correct_answers_label, 1, 0)
     grid.addWidget(required_correct_answers, 1, 1)
 
+    def save_config():
+        config[CONFIG_REQUIRED_CORRECT_ANSWERS] = required_correct_answers.value()
+        config[CONFIG_SHOW_TOAST] = show_toast.isChecked()
+        mw.addonManager.writeConfig(__name__, config)
+        dialog.close()
+
     ok = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+    ok.clicked.connect(save_config)
+
     cancel = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
     cancel.clicked.connect(dialog.close)
 
