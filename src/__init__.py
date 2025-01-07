@@ -2,7 +2,7 @@ import anki.cards
 import aqt.reviewer
 
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QVBoxLayout, QSpinBox, QCheckBox, QComboBox, QProgressBar
+from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QGridLayout, QDialogButtonBox, QVBoxLayout, QSpinBox, QCheckBox, QComboBox, QProgressBar
 from aqt import utils, mw, qconnect
 from aqt.gui_hooks import reviewer_did_answer_card
 
@@ -33,34 +33,42 @@ def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
         context.mw.col.update_note(updated_card.note())
         utils.tooltip(f'Answered correct {len(correct_answers)} times in a row. Reduced lapse of the card.', period=3000)
 
-def setting_dialogue():
+def open_setting_dialogue():
     dialog = QDialog(mw)
     dialog.setWindowTitle("Leech Balancer")
 
-    required_correct_answers_layout = QHBoxLayout()
-    required_correct_answers_label = QLabel("Required correct answers:")
-    required_correct_answers_def = QSpinBox()
-    required_correct_answers_def.setMinimumWidth(200)
-    required_correct_answers_layout.addWidget(required_correct_answers_label)
-    required_correct_answers_layout.addWidget(required_correct_answers_def)
+    grid = QGridLayout()
+
+    show_toast_label = QLabel("Show toast")
+    show_toast = QCheckBox()
+    grid.addWidget(show_toast_label, 0, 0)
+    grid.addWidget(show_toast, 0, 1)
+
+    required_correct_answers_label = QLabel("Required correct answers")
+    required_correct_answers = QSpinBox()
+    required_correct_answers.setMinimumWidth(200)
+    grid.addWidget(required_correct_answers_label, 1, 0)
+    grid.addWidget(required_correct_answers, 1, 1)
 
     ok = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
     cancel = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+    cancel.clicked.connect(dialog.close)
+
     buttons_layout = QHBoxLayout()
     buttons_layout.addStretch(1)
     buttons_layout.addWidget(ok)
     buttons_layout.addWidget(cancel)
 
     layout = QVBoxLayout()
-    dialog.setLayout(layout)
-    layout.addLayout(required_correct_answers_layout)
+    layout.addLayout(grid)
     layout.addLayout(buttons_layout)
 
+    dialog.setLayout(layout)
     dialog.exec()
 
 def init_menu():
     configs = QAction("Leech Balancer Config", mw)
-    qconnect(configs.triggered, setting_dialogue)
+    qconnect(configs.triggered, open_setting_dialogue)
     mw.form.menuTools.addAction(configs)
 
 
