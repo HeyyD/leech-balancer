@@ -30,13 +30,13 @@ class LeechBalancerConfig:
       grid.addWidget(required_correct_answers_label, 1, 0)
       grid.addWidget(required_correct_answers, 1, 1)
 
-      def save_config():
-          self.config[CONFIG_REQUIRED_CORRECT_ANSWERS] = required_correct_answers.value()
-          self.config[CONFIG_SHOW_TOAST] = show_toast.isChecked()
-          mw.addonManager.writeConfig(__name__, self.config)
-          self.dialog.close()
-
       ok = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+      def save_config():
+        self.config[CONFIG_REQUIRED_CORRECT_ANSWERS] = required_correct_answers.value()
+        self.config[CONFIG_SHOW_TOAST] = show_toast.isChecked()
+        mw.addonManager.writeConfig(__name__, self.config)
+        self.dialog.close()
+
       ok.clicked.connect(save_config)
 
       cancel = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
