@@ -15,7 +15,7 @@ This plugin is ideal for learners who:
 You can customize the plugin's behavior through its configuration:
 
 ### Required Correct Answers
-- **Purpose**: Sets the number of consecutive correct answers needed to reduce a card's lapse count.
+- **Purpose**: Sets the number of consecutive correct answers needed to reduce a card's lapse count. If the value is ie. 3 the lapse is reduced when the user gets the card 3 time correct. Next lapse reduction will be on 6 times correct, then 9... etc.
 - **Default Value**: `3`
 
 ### Show Notifications
