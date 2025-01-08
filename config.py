@@ -25,6 +25,7 @@ class LeechBalancerConfig:
       required_correct_answers_label = QLabel("Required correct answers")
       required_correct_answers = QSpinBox()
       required_correct_answers.setMinimumWidth(200)
+      required_correct_answers.setMinimum(1)
       required_correct_answers.setValue(self.config.get(CONFIG_REQUIRED_CORRECT_ANSWERS, 3))
 
       grid.addWidget(required_correct_answers_label, 1, 0)
