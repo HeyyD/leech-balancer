@@ -1,10 +1,16 @@
 import anki.cards
 import aqt.reviewer
 
+from anki.consts import CARD_TYPE_REV
 from aqt import mw, utils
-from aqt.gui_hooks import reviewer_did_answer_card
+from aqt.gui_hooks import reviewer_did_answer_card, reviewer_will_answer_card
 
 from .config import CONFIG_REQUIRED_CORRECT_ANSWERS, CONFIG_SHOW_TOAST
+
+cached_card_states = {}
+def cache_card_state(ease, reviewer, card):
+    cached_card_states[card.id] = card.type
+    return ease
 
 def get_config_value(key, default):
     return mw.addonManager.getConfig(__name__).get(key, default)
@@ -27,6 +33,9 @@ def was_consecutively_correct(correct_answers, times: int):
     return total_consecutively_correct >= times and total_consecutively_correct % times == 0
 
 def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
+    if int(cached_card_states.get(card.id)) != CARD_TYPE_REV:
+        return
+
     required_correct_answers = get_config_value(CONFIG_REQUIRED_CORRECT_ANSWERS, 3)
     show_toast = get_config_value(CONFIG_SHOW_TOAST, True)
 
@@ -46,4 +55,5 @@ def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
 
 def init():
     print('Setting up lapse reducer....')
+    reviewer_will_answer_card.append(cache_card_state)
     reviewer_did_answer_card.append(on_answer)
