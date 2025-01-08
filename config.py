@@ -1,5 +1,5 @@
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QGridLayout, QDialogButtonBox, QVBoxLayout, QSpinBox, QCheckBox, QComboBox, QProgressBar
+from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QGridLayout, QDialogButtonBox, QVBoxLayout, QSpinBox, QCheckBox
 from aqt import  mw, qconnect
 
 CONFIG_REQUIRED_CORRECT_ANSWERS = 'required_correct_answers'
