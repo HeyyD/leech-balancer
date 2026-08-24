@@ -1,0 +1,145 @@
+# AGENTS.md
+
+Guidance for AI coding agents working in this repository.
+
+## Project Overview
+
+**Leech Balancer** is an [Anki](https://apps.ankiweb.net) add-on that reduces
+lapses on leech cards: when a card that has previously lapsed is answered
+correctly N times in a row (configurable, default 3), its lapse counter is
+decremented by one. This gradually "rehabilitates" leech cards instead of
+leaving them permanently flagged.
+
+The project is a small fork/derivative of
+[LeechToolkit](https://github.com/iamjustkoi/LeechToolkit) by iamjustkoi
+(MIT license); the README still describes the full upstream feature set, but
+this repository only implements the lapse-reduction core plus a config dialog.
+
+## Repository Layout
+
+| File | Purpose |
+|---|---|
+| `__init__.py` | Add-on entry point. Runs `init_config()` then `init()` on load. |
+| `config.py` | PyQt6 config dialog added under Anki's Tools menu; reads/writes add-on config. |
+| `main.py` | Core logic: hooks `reviewer_did_answer_card`, decrements lapses. |
+| `config.json` | Default add-on config shipped to users (currently `{}`; defaults are applied in code). |
+| `meta.json` | Per-installation add-on metadata (name, disabled flag, cached config). Not the place for defaults. |
+| `README.md` | Upstream LeechToolkit documentation (feature descriptions, options). |
+
+There is no build system, test suite, or linter configuration.
+
+## How It Works
+
+Entry flow (`__init__.py`):
+
+1. `init_config()` (config.py) builds a `LeechBalancerConfig` dialog and adds a
+   "Leech Balancer Config" action to `Tools` via
+   `mw.form.menuTools.addAction(...)`.
+2. `init()` (main.py) appends an `on_answer` callback to the
+   `reviewer_did_answer_card` GUI hook.
+
+Lapse reduction (`main.py:on_answer`), fired after every card rating:
+
+1. Read `required_correct_answers` and `show_toast` from add-on config.
+2. Query the review history directly:
+   `SELECT ease FROM revlog WHERE cid IS {card.id} ORDER BY id DESC`.
+3. Count the trailing run of correct answers (`get_last_correct_answers`
+   stops at the first entry with `ease <= 1`, i.e. an "Again" answer).
+4. If the run length is a non-zero multiple of `required_correct_answers`
+   (`was_consecutively_correct`) and the card has lapses, re-fetch the card,
+   decrement `lapses`, save via `col.update_card(...)` /
+   `col.update_note(...)`, and merge the change into Anki's undo entry.
+5. Optionally show a toast via `aqt.utils.tooltip`.
+
+Config keys (constants prefixed `CONFIG_` in `config.py`):
+- `required_correct_answers` (int, default 3)
+- `show_toast` (bool, default True)
+
+Defaults live in code via `.get(key, default)`; keep `config.json` as the
+shipped default document if you add keys.
+
+## Anki Add-on Fundamentals
+
+The add-on runs **inside Anki's embedded Python interpreter**. It cannot be run
+standalone; there is no way to unit-test it without a running collection unless
+you mock `aqt`/`anki`.
+
+Key APIs used here (reference sources at https://github.com/ankitects/anki):
+
+- Hook `reviewer_did_answer_card(reviewer: aqt.reviewer.Reviewer, card: Card,
+  ease: Literal[1,2,3,4])` — defined in
+  `qt/tools/genhooks_gui.py`; imported from `aqt.gui_hooks`.
+- `revlog` table: `ease` is 1 for "Again" (failure/lapse) and >1 for Hard/Good/
+  Easy. Rows are ordered by `id` (timestamp, ms).
+- `Card.lapses` — number of times the card has lapsed (review -> relearn).
+  Anki's own leech threshold default is 8 lapses.
+- Collection methods (`pylib/anki/collection.py`): `get_card()`,
+  `update_card()`, `update_note()`, `undo_status().last_step`,
+  `merge_undo_entries(target)`.
+- Add-on config: `mw.addonManager.getConfig(__name__)` /
+  `mw.addonManager.writeConfig(__name__, cfg)` (`qt/aqt/addons.py`).
+
+### Undo handling pattern
+
+Any mutation of card/note state during a hook must preserve undo semantics:
+
+```python
+undo = context.mw.col.undo_status().last_step
+# ... mutate ...
+context.mw.col.merge_undo_entries(undo)
+```
+
+Keep this pattern when adding new mutations.
+
+### Qt bindings caveat
+
+Anki bundled **PyQt6** only in versions ~2.1.50–2.1.66; newer Anki releases
+bundle **PySide6**, where `import PyQt6` fails. The canonical, forward-
+compatible import style for add-ons is:
+
+```python
+from aqt.qt import QAction, QDialog, ...  # resolves to whichever Qt binding Anki ships
+```
+
+If you touch imports in `config.py`, prefer migrating `PyQt6.*` imports to
+`aqt.qt`.
+
+## Environment & Testing
+
+- Target interpreter: whatever Anki bundles (Python 3.9+; recent builds ship
+  newer). Avoid syntax/features newer than the oldest Anki you want to support.
+- No CI, tests, or lint commands exist. Do not invent them in commit messages;
+  if you add them, mention it to the user first.
+- Manual testing:
+  1. Copy/symlink this folder into Anki's `addons21` directory (e.g.
+     `%APPDATA%\Anki2\addons21\leech-balancer`) and restart Anki.
+  2. Enable it in Tools > Add-ons.
+  3. Review cards and watch for the toast / console prints
+     (`print()` output goes to Anki's console — launch Anki from a terminal on
+     Windows to see it).
+  4. Config dialog lives under Tools > "Leech Balancer Config".
+
+## Code Conventions
+
+- Plain functions and module-level constants; no classes except the Qt dialog.
+- Config access always through `mw.addonManager.getConfig(__name__)`; define
+  key names as `CONFIG_*` module constants in `config.py`.
+- Logging uses bare `print(...)` statements (visible in Anki's debug console).
+- Type hints are used sparingly (e.g. `card: anki.cards.Card`); match the
+  surrounding level of annotation rather than over-annotating.
+- Standard library + `anki`/`aqt`/Qt only; do not introduce third-party
+  dependencies — users install add-ons without a package manager.
+- SQL against the collection DB is written inline
+  (`card.col.db.list/executemany/...`). Card IDs are integers, so f-string
+  interpolation is acceptable, but prefer parameterized queries for anything
+  involving user input.
+
+## Gotchas
+
+- The `card` passed to `on_answer` reflects pre-rating state; the existing code
+  re-fetches via `card.col.get_card(card.id)` before mutating. Keep that.
+- `ease <= 1` is the only reliable "failed" signal in revlog; do not treat
+  ease 2 ("Hard") as a failure.
+- Lapse decrementing triggers every time the trailing-run length is an exact
+  multiple of the threshold while scanning new answers — i.e. once per N
+  consecutive correct answers, not just the first time.
