@@ -47,13 +47,16 @@ Lapse reduction (`main.py:on_answer`), fired after every card rating:
    stops at the first entry with `ease <= 1`, i.e. an "Again" answer).
 4. If the run length is a non-zero multiple of `required_correct_answers`
    (`was_consecutively_correct`) and the card has lapses, re-fetch the card,
-   decrement `lapses`, save via `col.update_card(...)` /
-   `col.update_note(...)`, and merge the change into Anki's undo entry.
+   decrement `lapses` (or set it to 0 when `reset_lapses` is enabled), save via
+   `col.update_card(...)` / `col.update_note(...)`, and merge the change into
+   Anki's undo entry.
 5. Optionally show a toast via `aqt.utils.tooltip`.
 
 Config keys (constants prefixed `CONFIG_` in `config.py`):
 - `required_correct_answers` (int, default 3)
 - `show_toast` (bool, default True)
+- `reset_lapses` (bool, default False) — set lapses to 0 instead of
+  decrementing by 1 when the threshold is met
 
 Defaults live in code via `.get(key, default)`; keep `config.json` as the
 shipped default document if you add keys.

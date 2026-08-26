@@ -4,6 +4,7 @@ from aqt import  mw, qconnect
 
 CONFIG_REQUIRED_CORRECT_ANSWERS = 'required_correct_answers'
 CONFIG_SHOW_TOAST = 'show_toast'
+CONFIG_RESET_LAPSES = 'reset_lapses'
 
 class LeechBalancerConfig:
     def __init__(self):
@@ -30,10 +31,17 @@ class LeechBalancerConfig:
       grid.addWidget(required_correct_answers_label, 1, 0)
       grid.addWidget(required_correct_answers, 1, 1)
 
+      reset_lapses_label = QLabel("Reset lapses to zero")
+      reset_lapses = QCheckBox()
+      reset_lapses.setChecked(self.config.get(CONFIG_RESET_LAPSES, False))
+      grid.addWidget(reset_lapses_label, 2, 0)
+      grid.addWidget(reset_lapses, 2, 1)
+
       ok = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
       def save_config():
         self.config[CONFIG_REQUIRED_CORRECT_ANSWERS] = required_correct_answers.value()
         self.config[CONFIG_SHOW_TOAST] = show_toast.isChecked()
+        self.config[CONFIG_RESET_LAPSES] = reset_lapses.isChecked()
         mw.addonManager.writeConfig(__name__, self.config)
         self.dialog.close()
 
