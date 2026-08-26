@@ -1,7 +1,9 @@
 import anki.cards
 import aqt.reviewer
 
-from aqt import utils
+from PyQt6.QtGui import QAction
+from PyQt6.QtWidgets import QDialog, QHBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QVBoxLayout, QSpinBox, QCheckBox, QComboBox, QProgressBar
+from aqt import utils, mw, qconnect
 from aqt.gui_hooks import reviewer_did_answer_card
 
 def get_last_correct_answers(answers):
@@ -31,6 +33,38 @@ def on_answer(context: aqt.reviewer.Reviewer, card: anki.cards.Card, ease: int):
         context.mw.col.update_note(updated_card.note())
         utils.tooltip(f'Answered correct {len(correct_answers)} times in a row. Reduced lapse of the card.', period=3000)
 
+def setting_dialogue():
+    dialog = QDialog(mw)
+    dialog.setWindowTitle("Leech Balancer")
+
+    required_correct_answers_layout = QHBoxLayout()
+    required_correct_answers_label = QLabel("Required correct answers:")
+    required_correct_answers_def = QSpinBox()
+    required_correct_answers_def.setMinimumWidth(200)
+    required_correct_answers_layout.addWidget(required_correct_answers_label)
+    required_correct_answers_layout.addWidget(required_correct_answers_def)
+
+    ok = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+    cancel = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+    buttons_layout = QHBoxLayout()
+    buttons_layout.addStretch(1)
+    buttons_layout.addWidget(ok)
+    buttons_layout.addWidget(cancel)
+
+    layout = QVBoxLayout()
+    dialog.setLayout(layout)
+    layout.addLayout(required_correct_answers_layout)
+    layout.addLayout(buttons_layout)
+
+    dialog.exec()
+
+def init_menu():
+    configs = QAction("Leech Balancer Config", mw)
+    qconnect(configs.triggered, setting_dialogue)
+    mw.form.menuTools.addAction(configs)
+
+
 def init():
     print('Setting up lapse reducer....')
     reviewer_did_answer_card.append(on_answer)
+    init_menu()
